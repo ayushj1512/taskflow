@@ -1,3 +1,5 @@
+// ignore_for_file: unused_field
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -220,13 +222,34 @@ class _TodoScreenState extends State<TodoScreen> {
   }
 
   void _toggleTask(int index) async {
-    _todos[index].isDone = !_todos[index].isDone;
-    await _taskCollection
-        .doc(_todos[index].id)
-        .update({'isDone': _todos[index].isDone});
-    setState(() {
-      _filteredTodos = List.from(_todos);
-    });
+    Todo task = _filteredTodos[index];
+    bool newStatus = !task.isDone; // Toggle status
+
+    try {
+      // 🔹 Ensure Firestore reference is correct
+      DocumentReference docRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(_auth.currentUser?.uid) // Ensure user-specific data
+          .collection('tasks')
+          .doc(task.id);
+
+      // 🔹 Update Firestore
+      await docRef.update({'isDone': newStatus});
+
+      // 🔹 Update local state
+      setState(() {
+        task.isDone = newStatus;
+        _filteredTodos[index] = task;
+        int originalIndex = _todos.indexWhere((t) => t.id == task.id);
+        if (originalIndex != -1) {
+          _todos[originalIndex] = task;
+        }
+      });
+
+      print("✅ Task '${task.title}' updated: isDone = ${task.isDone}");
+    } catch (e) {
+      print("❌ Firestore update error: $e");
+    }
   }
 
   void _filterTasks() {
